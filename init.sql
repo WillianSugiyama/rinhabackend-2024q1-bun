@@ -10,7 +10,7 @@ CREATE TABLE transacoes (
     id_cliente INT NOT NULL,
     valor INT NOT NULL,
     tipo VARCHAR(1) NOT NULL,
-    descricao VARCHAR(100),
+    descricao VARCHAR(100) NOT NULL,
     realizada_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_cliente) REFERENCES clientes(id)
 );

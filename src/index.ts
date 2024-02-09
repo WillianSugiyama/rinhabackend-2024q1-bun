@@ -1,16 +1,17 @@
 import { Elysia } from "elysia";
 import { Pool } from "pg";
 import { Clientes } from "./interfaces/clientes";
-import { client } from './queries/client';
+import { clientQuery } from './queries/client';
 import { createTransaction, transactions } from "./queries/transactions";
 import { ParamSchema, TransactionSchema } from "./validations";
 
 const PORT = 8000;
 
-console.log('PROCESS.ENV', process.env);
-
 const pool = new Pool({
-  connectionString: "postgres://admin:123@db:5432/rinha",
+  connectionString: process.env.DB_HOSTNAME ?? "postgres://admin:123@db:5432/rinha",
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
 })
 
 pool.on('connect', () => {
@@ -34,8 +35,9 @@ const app = new Elysia()
       }
     }
 
+    const client = await pool.connect();
     try {
-      const { rows } = await pool.query(client(validate.data.id));
+      const { rows } = await client.query(clientQuery(validate.data.id));
   
       if(!rows.length) {
         set.status = 404;
@@ -45,7 +47,7 @@ const app = new Elysia()
         }
       }
   
-      const { rows: transacoes } = await pool.query(transactions(validate.data.id));
+      const { rows: transacoes } = await client.query(transactions(validate.data.id));
   
       set.status = 200;
       return {
@@ -58,10 +60,12 @@ const app = new Elysia()
         status: 500,
         body: 'Erro ao buscar extrato'
       }
+    } finally {
+      client.release();
     }
   })
-  .post('/clientes/:id/transacoes', async ({ request, params: { id }, set }) => {
-    const validate = TransactionSchema.safeParse(await request.json());
+  .post('/clientes/:id/transacoes', async ({ body, params: { id }, set }) => {
+    const validate = TransactionSchema.safeParse(body);
     const validateParams = ParamSchema.safeParse({ id: +id });
 
     if (!validateParams.success) {
@@ -80,12 +84,23 @@ const app = new Elysia()
       }
     }
 
+    if(validate.data.descricao === 'null') { 
+      set.status = 422;
+      return {
+        status: 422,
+        body: 'Descrição inválida'
+      }
+    }
+
     const isDebito = validate.data.tipo === 'd';
 
+    const client = await pool.connect();
     try {
-      const { rows } = await pool.query(client(validateParams.data.id));
+      await client.query('BEGIN');
+      const { rows } = await client.query(clientQuery(validateParams.data.id));
   
       if(!rows.length) {
+        await client.query('ROLLBACK');
         set.status = 404;
         return {
           status: 404,
@@ -96,6 +111,7 @@ const app = new Elysia()
       const cliente = rows[0] as Clientes;
   
       if(isDebito && cliente.saldo - validate.data.valor < -cliente.limite) {
+        await client.query('ROLLBACK');
         set.status = 422;
         return {
           status: 422,
@@ -107,6 +123,7 @@ const app = new Elysia()
       const novoSaldo = cliente.saldo + valor;
   
       if(isDebito && isNaN(valor) || valor < -cliente.limite) {
+        await client.query('ROLLBACK');
         set.status = 422;
         return {
           status: 422,
@@ -114,7 +131,8 @@ const app = new Elysia()
         }
       }
   
-      await pool.query(createTransaction(validateParams.data.id, novoSaldo, validate.data.tipo, validate.data.descricao));
+      await client.query(createTransaction(validateParams.data.id, novoSaldo, validate.data.tipo, validate.data.descricao));
+      await client.query('COMMIT');
   
       set.status = 200;
       return {
@@ -122,12 +140,15 @@ const app = new Elysia()
         limite: cliente.limite
       };
     } catch (e) {
+      await client.query('ROLLBACK');
       console.error(e);
       set.status = 500;
       return {
         status: 500,
         body: 'Erro ao realizar transação'
       }
+    } finally {
+      client.release();
     }
   })
   .listen(PORT);

@@ -17,7 +17,7 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: "0.55"
+                    cpus: "0.4"
                     memory: "200MB"
 
     api02:
@@ -38,8 +38,9 @@ services:
         deploy:
             resources:
                 limits:
-                    cpus: "0.1"
+                    cpus: "0.2"
                     memory: "30MB"
+
 
     db:
         image: postgres:latest
@@ -51,13 +52,13 @@ services:
         ports:
             - "5434:5432"
         command: postgres -c checkpoint_timeout=600 -c max_wal_size=4096
+        volumes:
+            - ./init.sql:/docker-entrypoint-initdb.d/init.sql
         deploy:
             resources:
                 limits:
-                    cpus: "0.3"
+                    cpus: "0.5"
                     memory: "120MB"
-        volumes:
-            - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
 networks:
     default:

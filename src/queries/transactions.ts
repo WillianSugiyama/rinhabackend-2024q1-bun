@@ -26,7 +26,7 @@ SELECT json_build_object(
           'tipo', ut.tipo,
           'descricao', ut.descricao,
           'realizada_em', ut.realizada_em
-      ) ORDER BY ut.realizada_em ASC
+      ) ORDER BY ut.realizada_em DESC
       ) FILTER (WHERE ut.valor IS NOT NULL), '[]'::json)
 )
 FROM

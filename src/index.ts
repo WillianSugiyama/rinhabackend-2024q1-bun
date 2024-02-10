@@ -131,7 +131,7 @@ const app = new Elysia()
         }
       }
   
-      await client.query(createTransaction(validateParams.data.id, novoSaldo, validate.data.tipo, validate.data.descricao));
+      await client.query(createTransaction(validateParams.data.id, novoSaldo, validate.data.valor, validate.data.tipo, validate.data.descricao));
       await client.query('COMMIT');
   
       set.status = 200;

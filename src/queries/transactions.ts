@@ -39,7 +39,7 @@ GROUP BY
   c.id;
 `;
 
-export const createTransaction = (id: number, valor: number, tipo: string, descricao: string) => `
+export const createTransaction = (id: number, novoSaldo: number, valor: number, tipo: string, descricao: string) => `
   INSERT INTO transacoes (id_cliente, valor, tipo, descricao) VALUES (${id}, ${valor}, '${tipo}', '${descricao}');
-  UPDATE clientes SET saldo = ${valor} WHERE id = ${id};
+  UPDATE clientes SET saldo = ${novoSaldo} WHERE id = ${id};
 `;

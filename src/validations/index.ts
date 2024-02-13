@@ -1,13 +1,23 @@
-import { z } from 'zod';
+import { Static, Type } from '@sinclair/typebox';
 
-const TIPOS = ['c', 'd'] as const;
+enum TIPOS {
+  c = 'c',
+  d = 'd'
+}
 
-export const TransactionSchema = z.object({
-  valor: z.number().int(),
-  tipo: z.enum(TIPOS),
-  descricao: z.string().max(10).min(1)
+export const TransactionSchema = Type.Object({
+  valor: Type.Number(),
+  tipo: Type.Enum(TIPOS),
+  descricao: Type.String({
+    maxLength: 10,
+    minLength: 1
+  })
 });
 
-export const ParamSchema = z.object({
-  id: z.number().int()
+export type Transaction = Static<typeof TransactionSchema>;
+
+export const ParamSchema = Type.Object({
+  id: Type.Integer({ minimum: 1 })
 });
+
+export type Param = Static<typeof ParamSchema>;
